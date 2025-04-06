@@ -1,14 +1,17 @@
-from p4utils.utils.topology import Topology
-from p4utils.utils.sswitch_API import SimpleSwitchAPI
+from p4utils.utils.topology import NetworkGraph
+from p4utils.utils.sswitch_thrift_API import SimpleSwitchThriftAPI
+from p4utils.utils.helper import load_topo
 from scapy.all import sniff, Packet, Ether, IP, UDP, TCP, BitField, Raw
 from crc import Crc
 
 import threading
 import struct
 import random
+from bitarray import bitarray
 
 # P4 SWITCH ACTION TABLE NAMES DEFINITIONS
-NETCACHE_LOOKUP_TABLE = "lookup_table"
+INGRESS_LOOKUP_TABLE = "ingress_lookup_table"
+EGRESS_LOOKUP_TABLE = "egress_lookup_table"
 
 
 # P4 SWITCH REGISTER NAMES DEFINITIONS
@@ -38,6 +41,7 @@ NETCACHE_DELETE_COMPLETE = 5
 UNIX_CHANNEL = '/tmp/server_cont.s'
 CACHE_INSERT_COMPLETE = 'INSERT_OK'
 
+VTABLE_NUM = 16
 
 crc32_polinomials = [0x04C11DB7, 0xEDB88320, 0xDB710641, 0x82608EDB,
                      0x741B8CD7, 0xEB31D82E, 0x0D663B05, 0xBA0DC66B,
@@ -53,11 +57,11 @@ class NetcacheHeader(Packet):
 class NCacheController(object):
 
     def __init__(self, sw_name, vtables_num=8):
-        self.topo = Topology(db="../p4/topology.db")
+        self.topo = load_topo("../p4/topology.json")
         self.sw_name = sw_name
         self.thrift_port = self.topo.get_thrift_port(self.sw_name)
         self.cpu_port = self.topo.get_cpu_port_index(self.sw_name)
-        self.controller = SimpleSwitchAPI(self.thrift_port)
+        self.controller = SimpleSwitchThriftAPI(self.thrift_port)
 
         self.custom_calcs = self.controller.get_custom_crc_calcs()
         self.sketch_register_num = len(self.custom_calcs)
@@ -69,11 +73,14 @@ class NCacheController(object):
         # create a pool of ids (as much as the total amount of keys)
         # this pool will be used to assign index to keys which will be
         # used to index the cached key counter and the validity register
-        self.ids_pool = range(0, VTABLE_ENTRIES * VTABLE_SLOT_SIZE);
+        self.ids_pool = [key_id for key_id in range(0, VTABLE_ENTRIES * 8)]
 
         # array of bitmap, which marks available slots per cache line
         # as 0 bits and occupied slots as 1 bits
-        self.mem_pool = [0] * VTABLE_ENTRIES
+        self.mem_pool = [bitarray(VTABLE_NUM) for _ in range(VTABLE_ENTRIES)]
+        for ba in self.mem_pool:
+            # initialize all bits to 0 (i.e all slots are free)
+            ba.setall(0)
 
         # number of memory slots used (useful for lfu eviction policy)
         self.used_mem_slots = 0
@@ -82,7 +89,7 @@ class NCacheController(object):
         # register index in the P4 switch that corresponds to each key
         self.key_map = {}
 
-        self.setup()
+        # self.setup()
 
         #self.out_of_band_test()
 
@@ -215,36 +222,37 @@ class NCacheController(object):
     # and the cached items by implementing the First Fit algorithm described in
     # Memory Management section of 4.4.2 (netcache paper)
     def first_fit(self, key, value_size):
-
-        n_slots = (value_size / (VTABLE_SLOT_SIZE + 1)) + 1
         if value_size <= 0:
+            print("Error: Value size should be greater than 0")
             return None
-        if key in self.key_map:
+        elif key in self.key_map:
+            print(f"Key '{key}' already exists in cache, cannot insert again.")
             return None
 
+        n_slots = (value_size // VTABLE_SLOT_SIZE)
+
+        if n_slots % VTABLE_SLOT_SIZE != 0:
+            print("Error: Value size must be a multiple of VTABLE_SLOT_SIZE")
+            return None
 
         for idx in range(len(self.mem_pool)):
-            old_bitmap = self.mem_pool[idx]
-            n_zeros = 8 - bin(old_bitmap).count("1")
+            curr_ba = self.mem_pool[idx]
+            n_zeros = curr_ba.count(0)
 
             if n_zeros >= n_slots:
                 cnt = 0
-                bitmap = 0
-                for i in reversed(range(8)):
+
+                for i in reversed(range(VTABLE_NUM)):
                     if cnt >= n_slots:
                         break
 
-                    if not self.bit_is_set(old_bitmap, i):
-                        bitmap = bitmap | (1 << i)
+                    if not curr_ba[i]:
+                        curr_ba[i] = 1
                         cnt += 1
 
-                # mark last n_slots 0 bits as 1 bits because we assigned
-                # them to the new key and they are now allocated
-                self.mem_pool[idx] = old_bitmap | bitmap
+                self.used_mem_slots += n_slots
 
-                self.used_mem_slots += bin(bitmap).count("1")
-
-                return (idx, bitmap)
+                return (idx, self.mem_pool[idx]) # return the index of the value table and the bitmap
 
         return None
 
@@ -277,11 +285,15 @@ class NCacheController(object):
     # the switch and we also update the value registers with the value
     # given as argument (stored in multiple slots)
     def insert(self, key, value, cont=True):
+        print(f"Inserting key-value pair: ({key}, {value})")
         # find where to put the value for given key
         mem_info = self.first_fit(key, len(value))
 
+        print("Memory info: ", mem_info)
+
         # if key already exists or not space available then stop
         if mem_info == None:
+            print("Memory allocation failed for key: " + key)
             return
 
         vt_index, bitmap = mem_info
@@ -293,12 +305,10 @@ class NCacheController(object):
         # incrementally storing a part of the value at each value table
         # if the correspoding bit of the bitmap is set
         for i in range(self.vtables_num):
-
-            if self.bit_is_set(bitmap, self.vtables_num - i - 1):
+            if bitmap[i] == 1:
                 partial_val = value[cnt:cnt+VTABLE_SLOT_SIZE]
                 self.controller.register_write(VTABLE_NAME_PREFIX + str(i),
                         vt_index, self.str_to_int(partial_val))
-
                 cnt += VTABLE_SLOT_SIZE
 
         # allocate an id from the pool to index the counter and validity register
@@ -307,11 +317,14 @@ class NCacheController(object):
         key_index = self.ids_pool.pop()
 
         # add the new key to the cache lookup table of the p4 switch
-        self.controller.table_add(NETCACHE_LOOKUP_TABLE, "set_lookup_metadata",
-            [str(self.str_to_int(key))], [str(bitmap), str(vt_index), str(key_index)])
+        self.controller.table_add(INGRESS_LOOKUP_TABLE, "ingress_set_lookup_metadata",
+            [str(self.str_to_int(key))], [str(int(bitmap[:8].to01(), 2)), str(vt_index), str(key_index)])
+        self.controller.table_add(EGRESS_LOOKUP_TABLE, "egress_set_lookup_metadata",
+            [str(self.str_to_int(key))], [str(int(bitmap[8:].to01(), 2)), str(vt_index), str(key_index)])
 
         # mark cache entry for this key as valid
-        self.controller.register_write("cache_status", key_index, 1)
+        self.controller.register_write("ingress_cache_status", key_index, 1)
+        self.controller.register_write("egress_cache_status", key_index, 1)
 
         self.key_map[key] = vt_index, bitmap, key_index
 
@@ -327,7 +340,7 @@ class NCacheController(object):
     # (seems hacky due to restriction to use python2.7)
     def str_to_int(self, x, int_width=VTABLE_SLOT_SIZE):
         if len(x) > int_width:
-            print "Error: Overflow while converting string to int"
+            print("Error: Overflow while converting string to int")
 
         # add padding with 0x00 if input string size less than int_width
         bytearr = bytearray(int_width - len(x))
@@ -408,15 +421,11 @@ class NCacheController(object):
 
     # used for testing purposes and static population of cache
     def dummy_populate_vtables(self):
-        test_values_l = ["alpha", "beta", "gamma", "delta", "epsilon", "zeta",
-                         "hita", "theta", "yiota", "kappa", "lambda", "meta"]
-        test_keys_l = ["one", "two", "three", "four", "five", "six", "seven",
-                       "eight", "nine", "ten", "eleven", "twelve"]
-        cnt = 0
-        for i in range(11):
+        test_keys_l = ["12345678"]
+        test_values_l = ["0123456789ABCDEF" * 8]
+        
+        for i in range(len(test_keys_l)):
             self.insert(test_keys_l[i], test_values_l[i], False)
-
-
 
     # handling reports from the switch corresponding to hot keys, updates to
     # key-value pairs or deletions - this function receives a packet, extracts
@@ -467,9 +476,9 @@ class NCacheController(object):
     def main(self):
         self.set_forwarding_table()
         self.set_value_tables()
-        self.dummy_populate_vtables()
-        self.hot_reports_loop()
 
+        self.dummy_populate_vtables()
+        # self.hot_reports_loop()
 
 if __name__ == "__main__":
-    controller = NCacheController('s1').main()
+    controller = NCacheController('s1', vtables_num=VTABLE_NUM).main()

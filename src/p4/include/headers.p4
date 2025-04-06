@@ -15,7 +15,9 @@
 #define NETCACHE_ENTRIES 65536
 
 /* netcache value table constant definitions */
-#define NETCACHE_VTABLE_NUM 8
+#define INGRESS_VTABLE_NUM 8 // CHANGE THIS
+#define EGRESS_VTABLE_NUM 8 // CHANGE THIS
+#define NETCACHE_VTABLE_NUM 16 // CHANGE THIS
 #define NETCACHE_VTABLE_SIZE_WIDTH 16
 #define NETCACHE_VTABLE_SLOT_WIDTH 64    // in bits
 
@@ -25,7 +27,7 @@
 #define MAX_KEYS (NETCACHE_ENTRIES * NETCACHE_VTABLE_NUM)
 
 /* maximum number of bits of netcache fields */
-#define NETCACHE_VALUE_WIDTH_MAX 512
+#define NETCACHE_VALUE_WIDTH_MAX 1024 // CHANGE THIS
 #define NETCACHE_KEY_WIDTH 128
 
 /* special reserved port for NetCache */
@@ -170,24 +172,16 @@ struct fwd_metadata_t {
 struct metadata {
 	vtableBitmap_t vt_bitmap;
 	vtableIdx_t vt_idx;
-
-	bit<BLOOM_IDX_WIDTH> bloom_idx1;
-	bit<BLOOM_IDX_WIDTH> bloom_idx2;
-	bit<BLOOM_IDX_WIDTH> bloom_idx3;
-
-	bit<SKETCH_CELL_BIT_WIDTH> key_cnt;
-
-	keyIdx_t key_idx;
-
-
-	bit<1> hot_query;
-
-    fwd_metadata_t fwd_metadata;
-
     bool cache_valid;
 
+    bit<BLOOM_IDX_WIDTH> bloom_idx1;
+	bit<BLOOM_IDX_WIDTH> bloom_idx2;
+	bit<BLOOM_IDX_WIDTH> bloom_idx3;
+	bit<SKETCH_CELL_BIT_WIDTH> key_cnt;
+    keyIdx_t key_idx;
+	bit<1> hot_query;
+    fwd_metadata_t fwd_metadata;
 	bit<16> tcpLength;
-
 }
 
 struct headers {

@@ -1,0 +1,14 @@
+Value size = 64, Number of packets = 10368
+Total latency: 16.942163 seconds
+Avg latency: 0.001634 seconds
+Std Dev latency: 0.000570 seconds
+
+Value size = 128, Number of packets = 5184
+Total latency: 9.057436 seconds
+Avg latency: 0.001747 seconds
+Std Dev latency: 0.000633 seconds
+
+Total latency: 9.778225 seconds
+Avg latency: 0.001886 seconds
+Std Dev latency: 0.000626 seconds
+

@@ -30,10 +30,10 @@ def build_message(op, key, seq=0, value = ""):
         print("Error: Key should be up to 8 bytes")
         return None
 
-    if len(value) <= 64:
-        msg += convert(value).to_bytes(64, 'big')
+    if len(value) <= 128:
+        msg += convert(value).to_bytes(128, 'big')
     else:
-        print("Error: Value should be up to 64 bytes")
+        print("Error: Value should be up to 128 bytes")
         return None
 
     return msg
@@ -43,6 +43,7 @@ class NetCacheClient:
 
     def __init__(self, n_servers=1, no_cache=False):
         self.n_servers = n_servers
+        self.successful_reads = 0
         self.servers = []
 
         if no_cache:
@@ -118,8 +119,8 @@ class NetCacheClient:
             print('Error: Key not found (key = ' + key + ')')
         else:
             val = data[21:].decode("utf-8")
-            print(val)
-
+            # print(val)
+            self.successful_reads += 1
 
     def put(self, key, value, seq = 0, proto='udp'):
         msg = build_message(NETCACHE_WRITE_QUERY, key, seq, value)
@@ -181,6 +182,8 @@ class NetCacheClient:
 
         tcps.close()
 
+    def get_avg_latencies(self):
+        return sum(self.latencies) / len(self.latencies) if len(self.latencies) > 0 else 0
 
     def request_metrics_report(self, output=sys.stdout):
         results = []

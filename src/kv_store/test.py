@@ -5,61 +5,36 @@ def main(n_servers, no_cache):
     client = NetCacheClient(n_servers=n_servers, no_cache=no_cache)
 
     # read should be forwared to KV-Store and return error (not inserted)
-    client.read("test")
+    key = "12345678"
+    
+    target_size = (12 * 12 * 9 * 64 * 2 * 4)
+    value_size = 128
 
-    # put query should be forwarded to KV-Store
-    client.put("ctest", "test_okay")
+    if target_size % value_size != 0:
+        print("target_len must be divisible by value_len")
+        return
 
-    # read should be forwared to KV-Store
-    client.read("ctest")
-    client.read("ctest")
+    num_msg = target_size // value_size
 
-    # delete query should be forwarded to KV-Store
-    client.delete("ctest")
+    for _ in range(num_msg):
+        client.read(key)
 
-    # read should fail for hot key report threshold set to 3 (testing purposes)
-    client.read("ctest")
+    successful_reads = client.successful_reads
 
-    client.put("ctest_2", "tOmZmAvVujaXBP8nFm2TX10w")
-    client.put("ctest_2", "abcdeaaaujaXBP8nFm2TX10w")
-    client.put("ctest_2", "abcdefghijklmnopkalutera")
+    if successful_reads != num_msg:
+        print(f"Failed to read all messages: expected {num_msg} but got {successful_reads}")
+    
+    latencies = client.latencies
 
-    # those queries should be replied by the server
-    client.read("ctest_2")
-    client.read("ctest_2")
-    client.read("ctest_2")
-    client.read("ctest_2")
+    total_latency = sum(latencies) if latencies else 0
+    avg_latency = sum(latencies) / len(latencies) if latencies else 0
+    std_dev_latency = (sum((x - avg_latency) ** 2 for x in latencies) / len(latencies)) ** 0.5 if latencies else 0
 
-    # queries should be replied from the cache (threshold > 3)
-    client.read("ctest_2")
-    client.read("ctest_2")
-
-    client.put("ctest_2", "another")
-    client.read("ctest_2")
-    client.read("ctest_2")
-    client.read("ctest_2")
-
-    client.put("ctest_2", "123456789alelajdsflkjads")
-
-    client.read("ctest_2")
-    client.read("ctest_2")
-
-    #client.request_metrics_report()
-
-    """
-    # delete query forwarded to KV-store
-    client.delete("ctest_2")
-
-    # key should be invalidated in the cache and hence it will be replied by the server
-    client.read("ctest_2")
-
-    # test prepopulated value
-    client.read("c_s4_key44")
-    """
-
+    print(f"Total latency: {total_latency:.6f} seconds")
+    print(f"Avg latency: {avg_latency:.6f} seconds")
+    print(f"Std Dev latency: {std_dev_latency:.6f} seconds")
 
 if __name__=="__main__":
-
     import argparse
     parser = argparse.ArgumentParser()
 

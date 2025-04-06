@@ -94,22 +94,23 @@ class KVServer:
         self.udpss.bind((self.host, self.port))
 
         # create tcp socket server
-        self.tcpss = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.tcpss.bind((self.host, self.port))
-        self.tcpss.listen(1)
+        # self.tcpss = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # self.tcpss.bind((self.host, self.port))
+        # self.tcpss.listen(1)
 
         # spawn new thread that serves incoming udp (read) queries
-        server_udp_t = threading.Thread(target=self.handle_client_udp_request)
-        server_udp_t.start()
+        self.handle_client_udp_request()
+        # server_udp_t = threading.Thread(target=self.handle_client_udp_request)
+        # server_udp_t.start()
 
         # spawn new thread that serves incoming tcp (put/delete) queries
-        server_tcp_t = threading.Thread(target=self.handle_client_tcp_request)
-        server_tcp_t.start()
+        # server_tcp_t = threading.Thread(target=self.handle_client_tcp_request)
+        # server_tcp_t.start()
 
         # self.periodic_request_report()
 
         # starting time of serving requests (used for throughput calculation)
-        self.start_time = time.time()
+        # self.start_time = time.time()
 
 
 
@@ -405,8 +406,8 @@ def main(disable_cache, suppress_output, input_files):
 
     # populate the server with all the files given as command line
     # arguments (Usage: python3 server.py [file1 file2 ...])
-    for data_file in input_files:
-        server.populate_from_file(data_file)
+    # for data_file in input_files:
+    #     server.populate_from_file(data_file)
 
     server.activate()
 

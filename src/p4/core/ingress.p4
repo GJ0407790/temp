@@ -83,7 +83,7 @@ control MyIngress(inout headers hdr,
 
 
 	/* store metadata for a given key to find its values and index it properly */
-	action set_lookup_metadata(vtableBitmap_t vt_bitmap, vtableIdx_t vt_idx, keyIdx_t key_idx) {
+	action ingress_set_lookup_metadata(vtableBitmap_t vt_bitmap, vtableIdx_t vt_idx, keyIdx_t key_idx) {
 
 		meta.vt_bitmap = vt_bitmap;
 		meta.vt_idx = vt_idx;
@@ -92,26 +92,26 @@ control MyIngress(inout headers hdr,
 	}
 
 	/* define cache lookup table */
-	table lookup_table {
+	table ingress_lookup_table {
 
 		key = {
 			hdr.netcache.key : exact;
 		}
 
 		actions = {
-			set_lookup_metadata;
+			ingress_set_lookup_metadata;
 			NoAction;
 		}
 
-		size = NETCACHE_ENTRIES * NETCACHE_VTABLE_NUM;
+		size = NETCACHE_ENTRIES * INGRESS_VTABLE_NUM;
 		default_action = NoAction;
 
 	}
 
 
-    // register storing a bit to indicate whether an element in the cache
-    // is valid or invalid
-    register<bit<1>>(NETCACHE_ENTRIES * NETCACHE_VTABLE_NUM) cache_status;
+	// register storing a bit to indicate whether an element in the cache
+	// is valid or invalid
+  register<bit<1>>(NETCACHE_ENTRIES * INGRESS_VTABLE_NUM) ingress_cache_status;
 
 	// maintain 8 value tables since we need to spread them across stages
 	// where part of the value is created from each stage (4.4.2 section)
@@ -126,7 +126,7 @@ control MyIngress(inout headers hdr,
 
 	// count how many stages actually got triggered (1s on bitmap)
 	// this variable is needed for the shifting logic
-	bit<8> valid_stages_num = 0;
+	// bit<8> valid_stages_num = 0;
 
 	// build the value incrementally by concatenating the value
 	// attained by each register array (stage) based on whether the
@@ -153,119 +153,67 @@ control MyIngress(inout headers hdr,
 		vt0.read(curr_stage_val, (bit<32>) meta.vt_idx);
 
 		hdr.netcache.value = (bit<NETCACHE_VALUE_WIDTH_MAX>) curr_stage_val;
-		valid_stages_num = valid_stages_num + 1;
 	}
-
 
 	action process_array_1() {
 		bit<NETCACHE_VTABLE_SLOT_WIDTH> curr_stage_val;
 		vt1.read(curr_stage_val, (bit<32>) meta.vt_idx);
 
-		bit<8> shift_pos = 0;
-		if (valid_stages_num != 0) {
-			shift_pos = 64 << (valid_stages_num - 1);
-		}
-
 		hdr.netcache.value = (bit<NETCACHE_VALUE_WIDTH_MAX>) hdr.netcache.value << 64;
 		hdr.netcache.value = hdr.netcache.value | (bit<NETCACHE_VALUE_WIDTH_MAX>) curr_stage_val;
-
-		valid_stages_num = valid_stages_num + 1;
 	}
 
 	action process_array_2() {
 		bit<NETCACHE_VTABLE_SLOT_WIDTH> curr_stage_val;
 		vt2.read(curr_stage_val, (bit<32>) meta.vt_idx);
 
-		bit<8> shift_pos = 0;
-		if (valid_stages_num != 0) {
-			shift_pos = 64 << (valid_stages_num - 1);
-		}
-
 		hdr.netcache.value = (bit<NETCACHE_VALUE_WIDTH_MAX>) hdr.netcache.value << 64;
 		hdr.netcache.value = hdr.netcache.value | (bit<NETCACHE_VALUE_WIDTH_MAX>) curr_stage_val;
-
-		valid_stages_num = valid_stages_num + 1;
 	}
 
 	action process_array_3() {
 		bit<NETCACHE_VTABLE_SLOT_WIDTH> curr_stage_val;
 		vt3.read(curr_stage_val, (bit<32>) meta.vt_idx);
 
-		bit<8> shift_pos = 0;
-		if (valid_stages_num != 0) {
-			shift_pos = 64 << (valid_stages_num - 1);
-		}
-
 		hdr.netcache.value = (bit<NETCACHE_VALUE_WIDTH_MAX>) hdr.netcache.value << 64;
 		hdr.netcache.value = hdr.netcache.value | (bit<NETCACHE_VALUE_WIDTH_MAX>) curr_stage_val;
-
-		valid_stages_num = valid_stages_num + 1;
 	}
 
 	action process_array_4() {
 		bit<NETCACHE_VTABLE_SLOT_WIDTH> curr_stage_val;
 		vt4.read(curr_stage_val, (bit<32>) meta.vt_idx);
 
-		bit<8> shift_pos = 0;
-		if (valid_stages_num != 0) {
-			shift_pos = 64 << (valid_stages_num - 1);
-		}
-
 		hdr.netcache.value = (bit<NETCACHE_VALUE_WIDTH_MAX>) hdr.netcache.value << 64;
 		hdr.netcache.value = hdr.netcache.value | (bit<NETCACHE_VALUE_WIDTH_MAX>) curr_stage_val;
-
-		valid_stages_num = valid_stages_num + 1;
 	}
 
 	action process_array_5() {
 		bit<NETCACHE_VTABLE_SLOT_WIDTH> curr_stage_val;
 		vt5.read(curr_stage_val, (bit<32>) meta.vt_idx);
 
-		bit<8> shift_pos = 0;
-		if (valid_stages_num != 0) {
-			shift_pos = 64 << (valid_stages_num - 1);
-		}
-
 		hdr.netcache.value = (bit<NETCACHE_VALUE_WIDTH_MAX>) hdr.netcache.value << 64;
 		hdr.netcache.value = hdr.netcache.value | (bit<NETCACHE_VALUE_WIDTH_MAX>) curr_stage_val;
-
-		valid_stages_num = valid_stages_num + 1;
 	}
 
 	action process_array_6() {
 		bit<NETCACHE_VTABLE_SLOT_WIDTH> curr_stage_val;
 		vt6.read(curr_stage_val, (bit<32>) meta.vt_idx);
 
-		bit<8> shift_pos = 0;
-		if (valid_stages_num != 0) {
-			shift_pos = 64 << (valid_stages_num - 1);
-		}
-
 		hdr.netcache.value = (bit<NETCACHE_VALUE_WIDTH_MAX>) hdr.netcache.value << 64;
 		hdr.netcache.value = hdr.netcache.value | (bit<NETCACHE_VALUE_WIDTH_MAX>) curr_stage_val;
-
-		valid_stages_num = valid_stages_num + 1;
 	}
 
 	action process_array_7() {
 		bit<NETCACHE_VTABLE_SLOT_WIDTH> curr_stage_val;
 		vt7.read(curr_stage_val, (bit<32>) meta.vt_idx);
 
-		bit<8> shift_pos = 0;
-		if (valid_stages_num != 0) {
-			shift_pos = 64 << (valid_stages_num - 1);
-		}
-
 		hdr.netcache.value = (bit<NETCACHE_VALUE_WIDTH_MAX>) hdr.netcache.value << 64;
 		hdr.netcache.value = hdr.netcache.value | (bit<NETCACHE_VALUE_WIDTH_MAX>) curr_stage_val;
-
-		valid_stages_num = valid_stages_num + 1;
 	}
-
 
 	table vtable_0 {
 		key = {
-			meta.vt_bitmap[7:7]: exact;
+			meta.vt_bitmap[0:0]: exact;
 		}
 		actions = {
 			process_array_0;
@@ -277,7 +225,7 @@ control MyIngress(inout headers hdr,
 
 	table vtable_1 {
 		key = {
-			meta.vt_bitmap[6:6]: exact;
+			meta.vt_bitmap[1:1]: exact;
 		}
 		actions = {
 			process_array_1;
@@ -289,7 +237,7 @@ control MyIngress(inout headers hdr,
 
 	table vtable_2 {
 		key = {
-			meta.vt_bitmap[5:5]: exact;
+			meta.vt_bitmap[2:2]: exact;
 		}
 		actions = {
 			process_array_2;
@@ -301,7 +249,7 @@ control MyIngress(inout headers hdr,
 
 	table vtable_3 {
 		key = {
-			meta.vt_bitmap[4:4]: exact;
+			meta.vt_bitmap[3:3]: exact;
 		}
 		actions = {
 			process_array_3;
@@ -313,7 +261,7 @@ control MyIngress(inout headers hdr,
 
 	table vtable_4 {
 		key = {
-			meta.vt_bitmap[3:3]: exact;
+			meta.vt_bitmap[4:4]: exact;
 		}
 		actions = {
 			process_array_4;
@@ -325,7 +273,7 @@ control MyIngress(inout headers hdr,
 
 	table vtable_5 {
 		key = {
-			meta.vt_bitmap[2:2]: exact;
+			meta.vt_bitmap[5:5]: exact;
 		}
 		actions = {
 			process_array_5;
@@ -337,7 +285,7 @@ control MyIngress(inout headers hdr,
 
 	table vtable_6 {
 		key = {
-			meta.vt_bitmap[1:1]: exact;
+			meta.vt_bitmap[6:6]: exact;
 		}
 		actions = {
 			process_array_6;
@@ -349,7 +297,7 @@ control MyIngress(inout headers hdr,
 
 	table vtable_7 {
 		key = {
-			meta.vt_bitmap[0:0]: exact;
+			meta.vt_bitmap[7:7]: exact;
 		}
 		actions = {
 			process_array_7;
@@ -361,172 +309,37 @@ control MyIngress(inout headers hdr,
 
 
 
-	apply {
-
-		if (hdr.netcache.isValid()) {
-
-
-            switch(lookup_table.apply().action_run) {
-
-				set_lookup_metadata: {
-
-                    if (hdr.netcache.op == READ_QUERY){
-
+	apply 
+	{
+		if (hdr.netcache.isValid()) 
+		{
+			switch(ingress_lookup_table.apply().action_run) 
+			{
+				ingress_set_lookup_metadata: 
+				{
+          if (hdr.netcache.op == READ_QUERY)
+					{
 						bit<1> cache_valid_bit;
-						cache_status.read(cache_valid_bit, (bit<32>) meta.key_idx);
 
-						// read query should be answered by switch if the key
-						// resides in cache and its entry is valid
+						ingress_cache_status.read(cache_valid_bit, (bit<32>) meta.key_idx);
 						meta.cache_valid = (cache_valid_bit == 1);
 
-						/*
-						if(meta.cache_valid && hdr.udp.srcPort != NETCACHE_PORT) {
-							ret_pkt_to_sender();
-						}
-						*/
-
-
-						if (meta.cache_valid && hdr.udp.srcPort != NETCACHE_PORT) {
+						if (meta.cache_valid && hdr.udp.srcPort != NETCACHE_PORT) 
+						{
 							vtable_0.apply(); vtable_1.apply(); vtable_2.apply(); vtable_3.apply();
 							vtable_4.apply(); vtable_5.apply(); vtable_6.apply(); vtable_7.apply();
 
 							ret_pkt_to_sender();
 						}
 
-                    }
-
-
-					// if the key of the write query exists in the cache then we should inform
-					// the controller to initiate the 3-way cache coherency handshake
-                    else if (hdr.netcache.op == WRITE_QUERY) {
-
-                        cache_status.write((bit<32>) meta.key_idx, (bit<1>) 0);
-
-						hdr.netcache.op = CACHED_UPDATE;
-                    }
-                    // the server will block subsequent writes and update the entry
-                    // in the cache. to notify the server that the entry is cached
-                    // we set a special header
-
-                    // delete query is forwarded to key-value server and if the
-					// key resides in cache then its entry is invalidated
-                    // the paper does not specify what we should do additionally
-                    // probably the kv-store should delete the entry and notify the
-                    // controller as well -> perhaps use the mirroring CPU port approach as well
-                    else if (hdr.netcache.op == DELETE_QUERY) {
-
-                        cache_status.write((bit<32>) meta.key_idx, (bit<1>) 0);
-
-					}
-
-					else if (hdr.netcache.op == UPDATE_COMPLETE) {
-
-						// if it's an update query then ensure that the switch will
-						// forward the packet back to the server to complete the
-						// cache coherency handshake
-						ret_pkt_to_sender();
-
-						bit<8> stages_cnt = 0;
-						bit<8> shift_pos = 0;
-
-
-						if (meta.vt_bitmap[0:0] == 1) {
-							bit<NETCACHE_VTABLE_SLOT_WIDTH> new_val;
-							new_val = (bit<NETCACHE_VTABLE_SLOT_WIDTH>) (hdr.netcache.value >> shift_pos);
-
-							vt7.write((bit<32>) meta.vt_idx, new_val);
-
-							shift_pos = shift_pos + NETCACHE_VTABLE_SLOT_WIDTH;
-						}
-
-						if (meta.vt_bitmap[1:1] == 1) {
-							bit<NETCACHE_VTABLE_SLOT_WIDTH> new_val;
-							new_val = (bit<NETCACHE_VTABLE_SLOT_WIDTH>) (hdr.netcache.value >> shift_pos);
-
-							vt6.write((bit<32>) meta.vt_idx, new_val);
-
-							shift_pos = shift_pos + NETCACHE_VTABLE_SLOT_WIDTH;
-						}
-
-						if (meta.vt_bitmap[2:2] == 1) {
-							bit<NETCACHE_VTABLE_SLOT_WIDTH> new_val;
-							new_val = (bit<NETCACHE_VTABLE_SLOT_WIDTH>) (hdr.netcache.value >> shift_pos);
-
-							vt5.write((bit<32>) meta.vt_idx, new_val);
-
-							shift_pos = shift_pos + NETCACHE_VTABLE_SLOT_WIDTH;
-						}
-
-						if (meta.vt_bitmap[3:3] == 1) {
-							bit<NETCACHE_VTABLE_SLOT_WIDTH> new_val;
-							new_val = (bit<NETCACHE_VTABLE_SLOT_WIDTH>) (hdr.netcache.value >> shift_pos);
-
-							vt4.write((bit<32>) meta.vt_idx, new_val);
-
-							shift_pos = shift_pos + NETCACHE_VTABLE_SLOT_WIDTH;
-						}
-
-						if (meta.vt_bitmap[4:4] == 1) {
-							bit<NETCACHE_VTABLE_SLOT_WIDTH> new_val;
-							new_val = (bit<NETCACHE_VTABLE_SLOT_WIDTH>) (hdr.netcache.value >> shift_pos);
-
-							vt3.write((bit<32>) meta.vt_idx, new_val);
-
-							shift_pos = shift_pos + NETCACHE_VTABLE_SLOT_WIDTH;
-						}
-
-						if (meta.vt_bitmap[5:5] == 1) {
-							bit<NETCACHE_VTABLE_SLOT_WIDTH> new_val;
-							new_val = (bit<NETCACHE_VTABLE_SLOT_WIDTH>) (hdr.netcache.value >> shift_pos);
-
-							vt2.write((bit<32>) meta.vt_idx, new_val);
-
-							shift_pos = shift_pos + NETCACHE_VTABLE_SLOT_WIDTH;
-						}
-
-						if (meta.vt_bitmap[6:6] == 1) {
-							bit<NETCACHE_VTABLE_SLOT_WIDTH> new_val;
-							new_val = (bit<NETCACHE_VTABLE_SLOT_WIDTH>) (hdr.netcache.value >> shift_pos);
-
-							vt1.write((bit<32>) meta.vt_idx, new_val);
-
-							shift_pos = shift_pos + NETCACHE_VTABLE_SLOT_WIDTH;
-						}
-
-						if (meta.vt_bitmap[7:7] == 1) {
-							bit<NETCACHE_VTABLE_SLOT_WIDTH> new_val;
-							new_val = (bit<NETCACHE_VTABLE_SLOT_WIDTH>) (hdr.netcache.value >> shift_pos);
-
-							vt0.write((bit<32>) meta.vt_idx, new_val);
-						}
-
-
-						cache_status.write((bit<32>) meta.key_idx, (bit<1>) 1);
-
-						hdr.netcache.op = UPDATE_COMPLETE_OK;
-
-					}
-
+          }
 				}
 
-				NoAction: {
-
-					if (hdr.netcache.op == HOT_READ_QUERY) {
-
-						// inform the controller for the hot key to insert to cache
-						if (pkt_is_not_mirrored) {
-							clone(CloneType.I2E, CONTROLLER_MIRROR_SESSION);
-						}
-
-					}
-				}
-
-
-            }
-
-        }
+				NoAction: {}
+      }
+    }
 
 		l2_forward.apply();
 	}
-
+\
 }

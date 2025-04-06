@@ -1,49 +1,64 @@
 {
-  "program": "core/netcache.p4",
-  "switch": "simple_switch",
-  "compiler": "p4c",
-  "options": "--target bmv2 --arch v1model --std p4-16",
-  "switch_cli": "simple_switch_CLI",
+  "p4_src": "core/netcache.p4",
   "cli": true,
   "pcap_dump": false,
   "enable_log": true,
-    "topo_module": {
+  "host_node":
+  {
     "file_path": "",
-    "module_name": "p4utils.mininetlib.apptopo",
-    "object_name": "AppTopoStrategies"
+    "module_name": "p4utils.mininetlib.node",
+    "object_name": "P4Host"
   },
-  "controller_module": null,
-  "topodb_module": {
+  "switch_node":
+  {
     "file_path": "",
-    "module_name": "p4utils.utils.topology",
-    "object_name": "Topology"
+    "module_name": "p4utils.mininetlib.node",
+    "object_name": "P4Switch"
+  },
+  "router_node":
+  {
+    "file_path": "",
+    "module_name": "p4utils.mininetlib.node",
+    "object_name": "FRRouter"
+  },
+  "compiler_module":
+  {
+    "file_path": "",
+    "module_name": "p4utils.utils.compiler",
+    "object_name": "P4C"
   },
   "mininet_module": {
     "file_path": "",
-    "module_name": "p4utils.mininetlib.p4net",
+    "module_name": "p4utils.mininetlib.net",
     "object_name": "P4Mininet"
   },
   "topology": {
     "assignment_strategy" : "l2",
     "links": [
-		["server1", "s1"],
-		["server2", "s1"],
-		["server3", "s1"],
-		["server4", "s1"],
-		["client1", "s1"]
-	],
+        ["server1", "s1"],
+        ["server2", "s1"],
+        ["server3", "s1"],
+        ["server4", "s1"],
+        ["client1", "s1"]
+    ],
     "hosts": {
-		"server1": { },
-		"server2": { },
-		"server3": { },
-		"server4": { },
-		"client1": { }
+        "server1": { },
+        "server2": { },
+        "server3": { },
+        "server4": { },
+        "client1": { }
     },
     "switches": {
       "s1": {
+        "p4_src": "core/netcache.p4",
+        "cpu_port": true,
         "cli_input": "s1-commands.txt",
-        "program": "core/netcache.p4",
-		"cpu_port": true
+        "log_enabled": true,
+        "pcap_dump": false,
+        "pcap_dir": "",
+        "sw_bin": "simple_switch",
+        "thrift_port": 9090,
+        "grpc_port": 50051
       }
     }
   }
