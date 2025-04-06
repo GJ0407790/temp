@@ -3,7 +3,7 @@
 
 #include "../include/headers.p4"
 
-
+#define pkt_instance_type_ingress_recirc 4
 
 control MyEgress(inout headers hdr,
                  inout metadata meta,
@@ -231,6 +231,10 @@ control MyEgress(inout headers hdr,
 							vtable_12.apply(); vtable_13.apply(); vtable_14.apply(); vtable_15.apply();
 						}
 
+						if (meta.recirc_cnt < RECIRCULATION_COUNT) {
+							log_msg("Egress Recirculation check: {}", { meta.temp_value });
+							recirculate_preserving_field_list(1);
+						}
           }
 				}
 

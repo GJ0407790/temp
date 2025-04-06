@@ -27,8 +27,9 @@
 #define MAX_KEYS (NETCACHE_ENTRIES * NETCACHE_VTABLE_NUM)
 
 /* maximum number of bits of netcache fields */
-#define NETCACHE_VALUE_WIDTH_MAX 1024 // CHANGE THIS
+#define NETCACHE_VALUE_WIDTH_MAX 2048 // CHANGE THIS
 #define NETCACHE_KEY_WIDTH 128
+#define RECIRCULATION_COUNT 2
 
 /* special reserved port for NetCache */
 const bit<16> NETCACHE_PORT = 50000;
@@ -182,6 +183,12 @@ struct metadata {
 	bit<1> hot_query;
     fwd_metadata_t fwd_metadata;
 	bit<16> tcpLength;
+
+    @field_list(1)
+    bit<8> recirc_cnt;
+
+    @field_list(1)
+    value_t temp_value;
 }
 
 struct headers {

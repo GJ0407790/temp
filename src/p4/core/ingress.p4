@@ -12,6 +12,7 @@
 #define pkt_instance_type_ingress_recirc 4
 #define pkt_instance_type_replication 5
 #define pkt_instance_type_resubmit 6
+#define RECIRCULATION_PORT 2
 
 #define pkt_is_mirrored \
 	((standard_metadata.instance_type != pkt_instance_type_normal) && \
@@ -35,6 +36,10 @@ control MyIngress(inout headers hdr,
 		standard_metadata.egress_spec = port;
 	}
 
+	action increment_recirculation() {
+		meta.recirc_cnt = meta.recirc_cnt + 0x00000001;
+	}
+
 
 	/* Simple l2 forwarding logic */
 	table l2_forward {
@@ -51,6 +56,10 @@ control MyIngress(inout headers hdr,
 		size = 1024;
 		default_action = drop();
 
+	}
+
+	action set_egress_port_recirculation() {
+		standard_metadata.egress_spec = RECIRCULATION_PORT;
 	}
 
 	 /* update the packet header by swapping the source and destination addresses
@@ -151,14 +160,20 @@ control MyIngress(inout headers hdr,
 		// store value of the array at this stage
 		bit<NETCACHE_VTABLE_SLOT_WIDTH> curr_stage_val;
 		vt0.read(curr_stage_val, (bit<32>) meta.vt_idx);
-
-		hdr.netcache.value = (bit<NETCACHE_VALUE_WIDTH_MAX>) curr_stage_val;
+		log_msg("Ingress Recirculation check: {}", { hdr.netcache.value });
+		if (meta.recirc_cnt > 0x00000000) {
+			hdr.netcache.value = meta.temp_value;
+			hdr.netcache.value = (bit<NETCACHE_VALUE_WIDTH_MAX>) curr_stage_val << 64;
+			hdr.netcache.value = hdr.netcache.value | (bit<NETCACHE_VALUE_WIDTH_MAX>) curr_stage_val;
+		} else {
+			hdr.netcache.value = (bit<NETCACHE_VALUE_WIDTH_MAX>) hdr.netcache.value;
+		}
 	}
 
 	action process_array_1() {
 		bit<NETCACHE_VTABLE_SLOT_WIDTH> curr_stage_val;
 		vt1.read(curr_stage_val, (bit<32>) meta.vt_idx);
-
+		log_msg("Ingress Recirculation check: {}", { hdr.netcache.value });
 		hdr.netcache.value = (bit<NETCACHE_VALUE_WIDTH_MAX>) hdr.netcache.value << 64;
 		hdr.netcache.value = hdr.netcache.value | (bit<NETCACHE_VALUE_WIDTH_MAX>) curr_stage_val;
 	}
@@ -166,7 +181,7 @@ control MyIngress(inout headers hdr,
 	action process_array_2() {
 		bit<NETCACHE_VTABLE_SLOT_WIDTH> curr_stage_val;
 		vt2.read(curr_stage_val, (bit<32>) meta.vt_idx);
-
+		log_msg("Ingress Recirculation check: {}", { hdr.netcache.value });
 		hdr.netcache.value = (bit<NETCACHE_VALUE_WIDTH_MAX>) hdr.netcache.value << 64;
 		hdr.netcache.value = hdr.netcache.value | (bit<NETCACHE_VALUE_WIDTH_MAX>) curr_stage_val;
 	}
@@ -174,7 +189,7 @@ control MyIngress(inout headers hdr,
 	action process_array_3() {
 		bit<NETCACHE_VTABLE_SLOT_WIDTH> curr_stage_val;
 		vt3.read(curr_stage_val, (bit<32>) meta.vt_idx);
-
+		log_msg("Ingress Recirculation check: {}", { hdr.netcache.value });
 		hdr.netcache.value = (bit<NETCACHE_VALUE_WIDTH_MAX>) hdr.netcache.value << 64;
 		hdr.netcache.value = hdr.netcache.value | (bit<NETCACHE_VALUE_WIDTH_MAX>) curr_stage_val;
 	}
@@ -182,7 +197,7 @@ control MyIngress(inout headers hdr,
 	action process_array_4() {
 		bit<NETCACHE_VTABLE_SLOT_WIDTH> curr_stage_val;
 		vt4.read(curr_stage_val, (bit<32>) meta.vt_idx);
-
+		log_msg("Ingress Recirculation check: {}", { hdr.netcache.value });
 		hdr.netcache.value = (bit<NETCACHE_VALUE_WIDTH_MAX>) hdr.netcache.value << 64;
 		hdr.netcache.value = hdr.netcache.value | (bit<NETCACHE_VALUE_WIDTH_MAX>) curr_stage_val;
 	}
@@ -190,7 +205,7 @@ control MyIngress(inout headers hdr,
 	action process_array_5() {
 		bit<NETCACHE_VTABLE_SLOT_WIDTH> curr_stage_val;
 		vt5.read(curr_stage_val, (bit<32>) meta.vt_idx);
-
+		log_msg("Ingress Recirculation check: {}", { hdr.netcache.value });
 		hdr.netcache.value = (bit<NETCACHE_VALUE_WIDTH_MAX>) hdr.netcache.value << 64;
 		hdr.netcache.value = hdr.netcache.value | (bit<NETCACHE_VALUE_WIDTH_MAX>) curr_stage_val;
 	}
@@ -198,7 +213,7 @@ control MyIngress(inout headers hdr,
 	action process_array_6() {
 		bit<NETCACHE_VTABLE_SLOT_WIDTH> curr_stage_val;
 		vt6.read(curr_stage_val, (bit<32>) meta.vt_idx);
-
+		log_msg("Ingress Recirculation check: {}", { hdr.netcache.value });
 		hdr.netcache.value = (bit<NETCACHE_VALUE_WIDTH_MAX>) hdr.netcache.value << 64;
 		hdr.netcache.value = hdr.netcache.value | (bit<NETCACHE_VALUE_WIDTH_MAX>) curr_stage_val;
 	}
@@ -206,7 +221,7 @@ control MyIngress(inout headers hdr,
 	action process_array_7() {
 		bit<NETCACHE_VTABLE_SLOT_WIDTH> curr_stage_val;
 		vt7.read(curr_stage_val, (bit<32>) meta.vt_idx);
-
+		log_msg("Ingress Recirculation check: {}", { hdr.netcache.value });
 		hdr.netcache.value = (bit<NETCACHE_VALUE_WIDTH_MAX>) hdr.netcache.value << 64;
 		hdr.netcache.value = hdr.netcache.value | (bit<NETCACHE_VALUE_WIDTH_MAX>) curr_stage_val;
 	}
@@ -326,9 +341,19 @@ control MyIngress(inout headers hdr,
 
 						if (meta.cache_valid && hdr.udp.srcPort != NETCACHE_PORT) 
 						{
+							meta.vt_idx = meta.vt_idx + (bit<16>) meta.recirc_cnt;
+							log_msg("meta.vt_idx: {}", { meta.vt_idx });
 							vtable_0.apply(); vtable_1.apply(); vtable_2.apply(); vtable_3.apply();
-							vtable_4.apply(); vtable_5.apply(); vtable_6.apply(); vtable_7.apply();
+							vtable_4.apply(); vtable_5.apply(); vtable_6.apply(); vtable_7.apply();							
+						}
 
+						increment_recirculation();
+						if (meta.recirc_cnt < RECIRCULATION_COUNT) {
+							standard_metadata.instance_type = pkt_instance_type_ingress_recirc;
+							meta.temp_value = hdr.netcache.value;
+							set_egress_port_recirculation();
+						} else {
+							standard_metadata.instance_type = pkt_instance_type_normal;
 							ret_pkt_to_sender();
 						}
 
@@ -338,8 +363,9 @@ control MyIngress(inout headers hdr,
 				NoAction: {}
       }
     }
-
-		l2_forward.apply();
+		if (standard_metadata.egress_spec != RECIRCULATION_PORT) {
+			l2_forward.apply();
+		}
 	}
 \
 }
