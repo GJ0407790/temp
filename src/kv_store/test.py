@@ -8,13 +8,13 @@ def main(n_servers, no_cache):
     key = "12345678"
     
     target_size = (12 * 12 * 9 * 64 * 2 * 4)
-    value_size = 128
+    value_size = 256
 
     if target_size % value_size != 0:
         print("target_len must be divisible by value_len")
         return
 
-    num_msg = target_size // value_size
+    num_msg = 1 # target_size // value_size
 
     for _ in range(num_msg):
         client.read(key)

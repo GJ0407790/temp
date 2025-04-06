@@ -30,10 +30,10 @@ def build_message(op, key, seq=0, value = ""):
         print("Error: Key should be up to 8 bytes")
         return None
 
-    if len(value) <= 128:
-        msg += convert(value).to_bytes(128, 'big')
+    if len(value) <= 256:
+        msg += convert(value).to_bytes(256, 'big')
     else:
-        print("Error: Value should be up to 128 bytes")
+        print("Error: Value should be up to 256 bytes")
         return None
 
     return msg
@@ -119,7 +119,7 @@ class NetCacheClient:
             print('Error: Key not found (key = ' + key + ')')
         else:
             val = data[21:].decode("utf-8")
-            # print(val)
+            print(val)
             self.successful_reads += 1
 
     def put(self, key, value, seq = 0, proto='udp'):

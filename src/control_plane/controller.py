@@ -51,7 +51,7 @@ crc32_polinomials = [0x04C11DB7, 0xEDB88320, 0xDB710641, 0x82608EDB,
 class NetcacheHeader(Packet):
     name = 'NcachePacket'
     fields_desc = [BitField('op', 0, 8), BitField('seq', 0, 32),
-            BitField('key', 0, 128), BitField('value', 0, 512)]
+            BitField('key', 0, 128), BitField('value', 0, 2048)]
 
 
 class NCacheController(object):
@@ -229,9 +229,9 @@ class NCacheController(object):
             print(f"Key '{key}' already exists in cache, cannot insert again.")
             return None
 
-        n_slots = (value_size // VTABLE_SLOT_SIZE)
+        n_slots = (value_size // (2 * VTABLE_SLOT_SIZE))
 
-        if n_slots % VTABLE_SLOT_SIZE != 0:
+        if n_slots % (2 * VTABLE_SLOT_SIZE) != 0:
             print("Error: Value size must be a multiple of VTABLE_SLOT_SIZE")
             return None
 
@@ -304,12 +304,14 @@ class NCacheController(object):
         # store the value of the key in the vtables of the switch while
         # incrementally storing a part of the value at each value table
         # if the correspoding bit of the bitmap is set
-        for i in range(self.vtables_num):
-            if bitmap[i] == 1:
-                partial_val = value[cnt:cnt+VTABLE_SLOT_SIZE]
-                self.controller.register_write(VTABLE_NAME_PREFIX + str(i),
-                        vt_index, self.str_to_int(partial_val))
-                cnt += VTABLE_SLOT_SIZE
+        for j in range(2):
+            for i in range(self.vtables_num):
+                if bitmap[i] == 1:
+                    partial_val = value[cnt:cnt+VTABLE_SLOT_SIZE]
+                    self.controller.register_write(VTABLE_NAME_PREFIX + str(i),
+                            vt_index + j, self.str_to_int(partial_val))
+                    print(f"Writing to vtable {i} at index {vt_index + j}: {partial_val} (cnt={cnt})")
+                    cnt += VTABLE_SLOT_SIZE
 
         # allocate an id from the pool to index the counter and validity register
         # (we take the last element of list because in python list is implemented
@@ -422,7 +424,7 @@ class NCacheController(object):
     # used for testing purposes and static population of cache
     def dummy_populate_vtables(self):
         test_keys_l = ["12345678"]
-        test_values_l = ["0123456789ABCDEF" * 8]
+        test_values_l = ["0123456789ABCDEF" * 16]
         
         for i in range(len(test_keys_l)):
             self.insert(test_keys_l[i], test_values_l[i], False)
