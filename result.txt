@@ -12,3 +12,15 @@ Total latency: 9.778225 seconds
 Avg latency: 0.001886 seconds
 Std Dev latency: 0.000626 seconds
 
+Value size = 256, Number of packets = 2
+Total latency: 4.358507 seconds
+Avg latency: 0.001682 seconds
+Std Dev latency: 0.000751 seconds
+
+Total latency: 4.358507 seconds
+Avg latency: 0.001682 seconds
+Std Dev latency: 0.000751 seconds
+
+Total latency: 4.139173 seconds
+Avg latency: 0.001597 seconds
+Std Dev latency: 0.000461 seconds

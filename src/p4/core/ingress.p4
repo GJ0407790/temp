@@ -36,11 +36,6 @@ control MyIngress(inout headers hdr,
 		standard_metadata.egress_spec = port;
 	}
 
-	action increment_recirculation() {
-		meta.recirc_cnt = meta.recirc_cnt + 1;
-	}
-
-
 	/* Simple l2 forwarding logic */
 	table l2_forward {
 
@@ -165,7 +160,6 @@ control MyIngress(inout headers hdr,
 			hdr.netcache.value = (bit<NETCACHE_VALUE_WIDTH_MAX>) meta.temp_value << 64;
 			hdr.netcache.value = hdr.netcache.value | (bit<NETCACHE_VALUE_WIDTH_MAX>) curr_stage_val;
 		} else {
-			log_msg("First time");
 			hdr.netcache.value = (bit<NETCACHE_VALUE_WIDTH_MAX>) curr_stage_val;
 		}
 	}
@@ -342,16 +336,12 @@ control MyIngress(inout headers hdr,
 						if (meta.cache_valid && hdr.udp.srcPort != NETCACHE_PORT) 
 						{
 							meta.vt_idx = meta.vt_idx + (bit<16>) meta.recirc_cnt;
-							log_msg("meta.vt_idx: {}", { meta.vt_idx });
 							vtable_0.apply(); vtable_1.apply(); vtable_2.apply(); vtable_3.apply();
 							vtable_4.apply(); vtable_5.apply(); vtable_6.apply(); vtable_7.apply();							
 						}
 
-						increment_recirculation();
-
-						if (meta.recirc_cnt < RECIRCULATION_COUNT) {
+						if (meta.recirc_cnt < RECIRCULATION_COUNT - 1) {
 							standard_metadata.instance_type = pkt_instance_type_ingress_recirc;
-							meta.temp_value = hdr.netcache.value;
 							set_egress_port_recirculation();
 						} else {
 							standard_metadata.instance_type = pkt_instance_type_normal;

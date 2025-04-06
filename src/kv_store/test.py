@@ -14,7 +14,7 @@ def main(n_servers, no_cache):
         print("target_len must be divisible by value_len")
         return
 
-    num_msg = 1 # target_size // value_size
+    num_msg = target_size // value_size
 
     for _ in range(num_msg):
         client.read(key)

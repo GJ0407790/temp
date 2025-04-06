@@ -310,7 +310,6 @@ class NCacheController(object):
                     partial_val = value[cnt:cnt+VTABLE_SLOT_SIZE]
                     self.controller.register_write(VTABLE_NAME_PREFIX + str(i),
                             vt_index + j, self.str_to_int(partial_val))
-                    print(f"Writing to vtable {i} at index {vt_index + j}: {partial_val} (cnt={cnt})")
                     cnt += VTABLE_SLOT_SIZE
 
         # allocate an id from the pool to index the counter and validity register

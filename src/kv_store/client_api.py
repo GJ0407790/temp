@@ -119,7 +119,7 @@ class NetCacheClient:
             print('Error: Key not found (key = ' + key + ')')
         else:
             val = data[21:].decode("utf-8")
-            print(val)
+            # print(val)
             self.successful_reads += 1
 
     def put(self, key, value, seq = 0, proto='udp'):

@@ -14,7 +14,10 @@ control MyEgress(inout headers hdr,
 		meta.vt_bitmap = vt_bitmap;
 		meta.vt_idx = vt_idx;
 		meta.key_idx = key_idx;
+	}
 
+	action increment_recirculation() {
+		meta.recirc_cnt = meta.recirc_cnt + 1;
 	}
 
 	/* define cache lookup table */
@@ -225,14 +228,16 @@ control MyEgress(inout headers hdr,
 						egress_cache_status.read(cache_valid_bit, (bit<32>) meta.key_idx);
 						meta.cache_valid = (cache_valid_bit == 1);
 
-						if (meta.cache_valid && hdr.udp.srcPort != NETCACHE_PORT) 
+						if (meta.cache_valid) 
 						{
+							meta.vt_idx = meta.vt_idx + (bit<16>) meta.recirc_cnt;
+
 							vtable_8.apply(); vtable_9.apply(); vtable_10.apply(); vtable_11.apply();
 							vtable_12.apply(); vtable_13.apply(); vtable_14.apply(); vtable_15.apply();
 						}
-
+						increment_recirculation();
 						if (meta.recirc_cnt < RECIRCULATION_COUNT) {
-							log_msg("Egress Recirculation check: {}", { meta.temp_value });
+							meta.temp_value = hdr.netcache.value;
 							recirculate_preserving_field_list(1);
 						}
           }
